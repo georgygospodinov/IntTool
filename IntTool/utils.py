@@ -179,20 +179,32 @@ def h_n(n, y, R, step=0.0001):
 def abel_inversion_2d(data, n_min=1, n_max=20, path_to_save='./abel_coefs/', section_id=-1, two_gauss=False,
                       verbose=False, p0=None):
     if two_gauss:
-        _ = two_gauss_abel_inversion(data[:, section_id], n_min=n_min, n_max=n_max, path_to_save=path_to_save,
-                                     verbose=True, p0=p0)
+        two_gauss_abel_inversion(
+            data[:, section_id],
+            n_min=n_min,
+            n_max=n_max,
+            path_to_save=path_to_save,
+            verbose=True,
+            p0=p0
+        )
 
         return np.array([
-            two_gauss_abel_inversion(data[:, i], n_min=n_min, n_max=n_max, path_to_save=path_to_save, verbose=verbose,
-                                     p0=p0)
+            two_gauss_abel_inversion(
+                data[:, i],
+                n_min=n_min,
+                n_max=n_max,
+                path_to_save=path_to_save,
+                verbose=verbose,
+                p0=p0
+            )
             for i in tqdm(range(data.shape[1]))
         ]).T
 
     else:
-        _ = abel_inversion(data[:, section_id], n_min=n_min, n_max=n_max, path_to_save=path_to_save, verbose=True)
+        abel_inversion(data[:, section_id], n_min=n_min, n_max=n_max, path_to_save=path_to_save, verbose=True)
 
         return np.array([
-            abel_inversion(data[:, i], n_min=n_min, n_max=n_max, path_to_save=path_to_save, verbose=verbose)
+            abel_inversion(data[:, i], n_min=n_min, n_max=n_max, path_to_save=path_to_save, verbose=verbose)[1]
             for i in tqdm(range(data.shape[1]))
         ]).T
 
@@ -211,18 +223,19 @@ def r_2(y, fitted_y):
 
 def two_gauss_abel_inversion(h_y, n_min=1, n_max=20, path_to_save='./abel_coefs/', verbose=True, r_2_threshold=0.85,
                              p0=None):
+    """
+    TODO: return H_y
+    """
     x = np.arange(h_y.size) - h_y.size / 2
 
     popt, _ = curve_fit(fit_function, x, h_y, maxfev=1000000, p0=p0)
-
-    fit = {}
 
     fitted_y = fit_function(x, *popt)
 
     R_2 = r_2(h_y, fitted_y)
 
     if R_2 < r_2_threshold:
-        return abel_inversion(h_y, n_min=n_min, n_max=5, path_to_save=path_to_save, verbose=verbose)
+        return abel_inversion(h_y, n_min=n_min, n_max=5, path_to_save=path_to_save, verbose=verbose)[1]
 
     if verbose:
         print(f'r_2: {R_2}')
@@ -265,10 +278,20 @@ def two_gauss_abel_inversion(h_y, n_min=1, n_max=20, path_to_save='./abel_coefs/
     }
 
     abel = {
-        "left": abel_inversion(centered_line["left"], n_min=n_min, n_max=n_max, path_to_save=path_to_save,
-                               verbose=verbose),
-        "right": abel_inversion(centered_line["right"], n_min=n_min, n_max=n_max, path_to_save=path_to_save,
-                                verbose=verbose)
+        "left": abel_inversion(
+            centered_line["left"],
+            n_min=n_min,
+            n_max=n_max,
+            path_to_save=path_to_save,
+            verbose=verbose
+        )[1],
+        "right": abel_inversion(
+            centered_line["right"],
+            n_min=n_min,
+            n_max=n_max,
+            path_to_save=path_to_save,
+            verbose=verbose
+        )[1]
     }
 
     if verbose:
