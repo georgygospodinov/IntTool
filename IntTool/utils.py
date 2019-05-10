@@ -56,10 +56,6 @@ def inverse_fourier(spectrum):
     return img_back
 
 
-def log_abs(spectrum):
-    return 20 * np.log(cv2.magnitude(spectrum[:, :, 0], spectrum[:, :, 1]))
-
-
 def complex_abs(spectrum):
     return cv2.magnitude(spectrum[:, :, 0], spectrum[:, :, 1])
 
@@ -149,14 +145,25 @@ def remove_plane(data):
     return cleared_data - cleared_data.min()
 
 
-def phase_from_plasma_background(img_phase, back_phase, remove=True, unwrap=True):
+def phase_from_plasma_background(interferogram, background, mask, mask_center, mask_size, mask_gauss=False, remove=True, unwrap=True):
+    y1, y2, x1, x2 = mask
+    img_phase = phase(
+        inverse_fourier(
+            apply_mask(fourier(interferogram), mask_center, mask_size, gauss=mask_gauss)
+        )
+    )[y1:y2, x1:x2]
+    back_phase = phase(
+        inverse_fourier(
+            apply_mask(fourier(background), mask_center, mask_size, gauss=mask_gauss)
+        )
+    )[y1:y2, x1:x2]
     if unwrap:
-        phase = unwrap_phase(img_phase - back_phase)
+        reconstructed_phase = unwrap_phase(back_phase - img_phase)
     else:
-        phase = (np.pi + img_phase - back_phase) % (2 * np.pi) + np.pi
+        reconstructed_phase = (np.pi + back_phase - img_phase) % (2 * np.pi) + np.pi
     if remove:
-        phase = remove_plane(phase)
-    return phase - phase.min()
+        reconstructed_phase = remove_plane(reconstructed_phase)
+    return reconstructed_phase - reconstructed_phase.min()
 
 
 def remove_linear_trend(data):
@@ -401,3 +408,72 @@ def phi_rotate(r, x0=0, y0=0, size=None):
             if index < R:
                 out[i, j] = r[index]
     return out
+
+
+def interferogram_describe(interferogram, mask_size, area_to_show, gauss_mask=False, shift_x=800, shift_y=1200):
+    plt.imshow(interferogram, cmap='gray')
+    plt.title('interferogram')
+    plt.axis('off')
+    plt.show()
+
+    spectrum = complex_abs(fourier(interferogram))
+
+    plt.figure(figsize=(18, 4))
+    plt.subplot(131)
+    plt.imshow(np.log(spectrum), cmap='jet')
+    plt.title('spectrum')
+
+    shifted_spectrum = spectrum[:shift_y, :shift_x]
+
+    plt.subplot(132)
+    plt.imshow(np.log(shifted_spectrum), cmap='jet')
+    plt.title('shifted spectrum')
+
+    max_id = np.array(np.unravel_index(shifted_spectrum.argmax(), shifted_spectrum.shape))
+
+    plt.subplot(133)
+    plt.imshow(
+        np.log(spectrum[
+               max_id[0] - area_to_show[0]: max_id[0] + area_to_show[0] + 1,
+               max_id[1] - area_to_show[1]: max_id[1] + area_to_show[1] + 1
+               ]),
+        cmap='jet'
+    )
+    plt.title('detected maximum')
+    plt.show()
+
+    plt.figure(figsize=(18, 4))
+    plt.subplot(131)
+    plt.imshow(
+        apply_mask(np.log(spectrum), max_id, mask_size, complex_mask=False, gauss=gauss_mask)[
+            max_id[0] - area_to_show[0]: max_id[0] + area_to_show[0] + 1,
+            max_id[1] - area_to_show[1]: max_id[1] + area_to_show[1] + 1
+        ],
+        cmap='jet'
+    )
+    plt.title('maximum with filter')
+
+    plt.subplot(132)
+    plt.imshow(
+        apply_mask(
+            np.log(spectrum),
+            max_id,
+            mask_size,
+            complex_mask=False,
+            gauss=gauss_mask
+        ),
+        cmap='jet'
+    )
+    plt.title('spectrum with mask')
+
+    plt.subplot(133)
+    plt.imshow(
+        complex_abs(
+            inverse_fourier(apply_mask(fourier(interferogram), max_id, mask_size, gauss=gauss_mask))
+        ),
+        cmap='gray')
+    plt.title('Inverse fourier after mask')
+    plt.axis('off')
+    plt.show()
+
+    return max_id
