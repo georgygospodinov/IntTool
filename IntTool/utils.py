@@ -114,8 +114,10 @@ def fwhm(x, y):
 
 
 def critical_density(wavelength):
-    # wavelength in mcm
-    # return N_critical in cm^(-3)
+    """
+    wavelength in mcm
+    return N_critical in cm^(-3)
+    """
     c = 299792458
     eps0 = 8.85e-12
     e = 1.6e-19
@@ -221,7 +223,7 @@ def line_form(x, x0, a, b):
 
 
 def fit_function(x, x1, a1, b1, x2, a2, b2):
-    return abs(a1) * np.exp(-(x - x1) ** 2 / b1 ** 2) + abs(a2) * np.exp(-(x - x2) ** 2 / b2 ** 2)
+    return line_form(x, x1, a1, b1) + line_form(x, x2, a2, b2)
 
 
 def r_2(y, fitted_y):
@@ -247,7 +249,7 @@ def two_gauss_abel_inversion(h_y, n_min=1, n_max=20, path_to_save='./abel_coefs/
     if verbose:
         print(f'r_2: {R_2}')
 
-    fit = {
+    line = {
         "left": line_form(x, *popt[:3]),
         "right": line_form(x, *popt[3:])
     }
@@ -266,16 +268,11 @@ def two_gauss_abel_inversion(h_y, n_min=1, n_max=20, path_to_save='./abel_coefs/
         plt.xlabel('r, пиксели', fontsize=14)
         plt.ylabel('фаза, радиан', fontsize=14)
         plt.plot(x, h_y, label='initial')
-        plt.plot(x, fit["left"], label='fitted')
-        plt.plot(x, fit["right"], label='fitted')
+        plt.plot(x, line["left"], label='fitted')
+        plt.plot(x, line["right"], label='fitted')
         plt.grid()
         plt.legend(fontsize=12)
         plt.show()
-
-    line = {
-        "left": line_form(x, *popt[:3]),
-        "right": line_form(x, *popt[3:])
-    }
 
     dist = line["right"].argmax() - line["left"].argmax()
 
@@ -302,8 +299,8 @@ def two_gauss_abel_inversion(h_y, n_min=1, n_max=20, path_to_save='./abel_coefs/
     }
 
     if verbose:
-        polar = phi_rotate(abel['left'][abel['left'].size // 2:], x0=-dist / 2, size=1000) + phi_rotate(
-            abel["right"][abel["right"].size // 2:], x0=dist / 2, size=1000)
+        polar = phi_rotate(abel['left'][abel['left'].size // 2:], x0=-dist / 2, size=1000) + \
+                phi_rotate(abel["right"][abel["right"].size // 2:], x0=dist / 2, size=1000)
         plt.imshow(polar, cmap='jet')
         plt.savefig('./rotated_distribution_gauss.png', dpi=300)
         plt.show()
