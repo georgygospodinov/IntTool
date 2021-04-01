@@ -160,7 +160,7 @@ def phase_from_plasma_background(interferogram, background, mask, mask_center, m
         )
     )[y1:y2, x1:x2]
     if unwrap:
-        reconstructed_phase = unwrap_phase(img_phase - back_phase)
+        reconstructed_phase = unwrap_phase(back_phase - img_phase)
     else:
         reconstructed_phase = (np.pi + img_phase - back_phase) % (2 * np.pi) + np.pi
     if remove:
